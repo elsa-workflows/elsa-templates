@@ -18,6 +18,36 @@ Version-specific branches may target exact stable or preview versions, for examp
 - `elsa-studio`: Elsa Studio with selectable Blazor hosting model.
 - `elsa-combined`: Elsa Server and Elsa Studio in one solution with selectable server feature model and Studio hosting model.
 
+## Install From NuGet
+
+Stable template packages are published to NuGet.org:
+
+```bash
+dotnet new install Elsa.Templates
+```
+
+## Install From Preview Feed
+
+Preview template packages are published to the Elsa preview feed. Install a preview version by passing the feed URL as an additional source and specifying the preview version:
+
+```bash
+dotnet new install Elsa.Templates@<preview-version> --add-source https://f.feedz.io/elsa-workflows/elsa-3/nuget/index.json
+```
+
+For example: `Elsa.Templates@3.8.0-preview.1234`.
+
+To make the preview feed available for package restore as well, add it to your `NuGet.config` next to the main NuGet feed:
+
+```xml
+<?xml version="1.0" encoding="utf-8"?>
+<configuration>
+  <packageSources>
+    <add key="NuGet.org" value="https://api.nuget.org/v3/index.json" />
+    <add key="Elsa 3 Preview" value="https://f.feedz.io/elsa-workflows/elsa-3/nuget/index.json" />
+  </packageSources>
+</configuration>
+```
+
 ## Install From Source
 
 ```bash
