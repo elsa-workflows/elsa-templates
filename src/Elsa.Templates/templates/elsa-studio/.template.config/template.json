@@ -1,0 +1,77 @@
+{
+  "$schema": "http://json.schemastore.org/template",
+  "author": "Elsa Workflows",
+  "classifications": [
+    "Web",
+    "Elsa",
+    "Workflow",
+    "Blazor"
+  ],
+  "identity": "Elsa.Templates.Studio",
+  "name": "Elsa Studio",
+  "shortName": "elsa-studio",
+  "sourceName": "Company.ElsaStudio",
+  "preferNameDirectory": true,
+  "tags": {
+    "language": "C#",
+    "type": "solution"
+  },
+  "symbols": {
+    "hosting": {
+      "type": "parameter",
+      "datatype": "choice",
+      "defaultValue": "server",
+      "description": "The Blazor hosting model to use.",
+      "choices": [
+        {
+          "choice": "server",
+          "description": "Generate a Blazor Server Studio host."
+        },
+        {
+          "choice": "wasm",
+          "description": "Generate a Blazor WebAssembly Studio client."
+        },
+        {
+          "choice": "hybrid",
+          "description": "Generate a host plus WASM client with runtime hosting selection."
+        }
+      ]
+    },
+    "useServerHosting": {
+      "type": "computed",
+      "value": "(hosting == \"server\")"
+    },
+    "useWasmHosting": {
+      "type": "computed",
+      "value": "(hosting == \"wasm\")"
+    },
+    "useHybridHosting": {
+      "type": "computed",
+      "value": "(hosting == \"hybrid\")"
+    }
+  },
+  "sources": [
+    {
+      "modifiers": [
+        {
+          "condition": "(!useServerHosting)",
+          "exclude": [
+            "src/Company.ElsaStudio.Server/**"
+          ]
+        },
+        {
+          "condition": "(!useWasmHosting && !useHybridHosting)",
+          "exclude": [
+            "src/Company.ElsaStudio.Wasm/**"
+          ]
+        },
+        {
+          "condition": "(!useHybridHosting)",
+          "exclude": [
+            "src/Company.ElsaStudio.Host/**"
+          ]
+        }
+      ]
+    }
+  ]
+}

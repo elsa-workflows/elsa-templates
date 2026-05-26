@@ -20,12 +20,12 @@
 
 ## Slice 3: Elsa Studio Template
 
-- [ ] Add `elsa-studio` template metadata.
-- [ ] Add Blazor Server output.
-- [ ] Add Blazor WebAssembly output.
-- [ ] Add hybrid host + wasm client output.
-- [ ] Add smoke tests for all hosting models.
-- [ ] Verify generated outputs restore and build.
+- [x] Add `elsa-studio` template metadata.
+- [x] Add Blazor Server output.
+- [x] Add Blazor WebAssembly output.
+- [x] Add hybrid host + wasm client output.
+- [x] Add smoke tests for all hosting models.
+- [x] Verify generated outputs restore and build.
 
 ## Slice 4: Elsa Combined Template
 

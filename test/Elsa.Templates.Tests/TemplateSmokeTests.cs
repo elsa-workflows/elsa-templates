@@ -29,6 +29,25 @@ public class TemplateSmokeTests : IClassFixture<TemplatePackageFixture>
         await DotNet.RunAsync("new", "elsa-server", "-n", projectName, "-o", outputPath, "--feature-model", featureModel, "--debug:custom-hive", hivePath);
         await DotNet.RunAsync("build", Path.Combine(outputPath, $"{projectName}.csproj"));
     }
+
+    [Theory]
+    [InlineData("server")]
+    [InlineData("wasm")]
+    [InlineData("hybrid")]
+    public async Task ElsaStudioTemplateBuilds(string hosting)
+    {
+        await using var workspace = TempWorkspace.Create();
+        var solutionName = $"Sample.{hosting}.Studio";
+        var outputPath = Path.Combine(workspace.Path, "output");
+        var hivePath = Path.Combine(workspace.Path, "hive");
+
+        Directory.CreateDirectory(outputPath);
+        Directory.CreateDirectory(hivePath);
+
+        await DotNet.RunAsync("new", "install", _fixture.PackagePath, "--debug:custom-hive", hivePath);
+        await DotNet.RunAsync("new", "elsa-studio", "-n", solutionName, "-o", outputPath, "--hosting", hosting, "--debug:custom-hive", hivePath);
+        await DotNet.RunAsync("build", Path.Combine(outputPath, $"{solutionName}.slnx"));
+    }
 }
 
 public sealed class TemplatePackageFixture : IAsyncLifetime
@@ -133,7 +152,8 @@ public sealed class TempWorkspace : IAsyncDisposable
 
     public static TempWorkspace Create()
     {
-        var path = System.IO.Path.Combine(System.IO.Path.GetTempPath(), $"elsa-template-tests-{Guid.NewGuid():N}");
+        var parentDirectory = Directory.GetParent(RepositoryPaths.Root)?.FullName ?? RepositoryPaths.Root;
+        var path = System.IO.Path.Combine(parentDirectory, ".elsa-template-tests", $"elsa-template-tests-{Guid.NewGuid():N}");
         Directory.CreateDirectory(path);
         return new(path);
     }
