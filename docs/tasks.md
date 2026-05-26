@@ -41,4 +41,4 @@
 - [x] Document package/version branch policy.
 - [x] Add CI workflow.
 - [x] Run full smoke test suite.
-- [ ] Push final state.
+- [x] Push final state.
