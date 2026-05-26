@@ -6,8 +6,8 @@
 - [x] Add roadmap and task breakdown.
 - [x] Add template pack project shell.
 - [x] Add test project shell.
-- [ ] Create GitHub repository.
-- [ ] Push initial commit.
+- [x] Create GitHub repository.
+- [x] Push initial commit.
 
 ## Slice 2: Elsa Server Template
 
