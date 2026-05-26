@@ -29,11 +29,11 @@
 
 ## Slice 4: Elsa Combined Template
 
-- [ ] Add `elsa-combined` template metadata.
-- [ ] Compose server and Studio hosting options.
-- [ ] Add hybrid runtime hosting configuration.
-- [ ] Add smoke tests for representative combinations.
-- [ ] Verify generated outputs restore and build.
+- [x] Add `elsa-combined` template metadata.
+- [x] Compose server and Studio hosting options.
+- [x] Add hybrid runtime hosting configuration.
+- [x] Add smoke tests for representative combinations.
+- [x] Verify generated outputs restore and build.
 
 ## Slice 5: Documentation and Release Readiness
 

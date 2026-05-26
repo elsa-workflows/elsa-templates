@@ -48,6 +48,33 @@ public class TemplateSmokeTests : IClassFixture<TemplatePackageFixture>
         await DotNet.RunAsync("new", "elsa-studio", "-n", solutionName, "-o", outputPath, "--hosting", hosting, "--debug:custom-hive", hivePath);
         await DotNet.RunAsync("build", Path.Combine(outputPath, $"{solutionName}.slnx"));
     }
+
+    [Theory]
+    [InlineData("static", "server")]
+    [InlineData("static", "wasm")]
+    [InlineData("static", "hybrid")]
+    [InlineData("shell", "server")]
+    [InlineData("shell", "wasm")]
+    [InlineData("shell", "hybrid")]
+    public async Task ElsaCombinedTemplateBuilds(string featureModel, string studioHosting)
+    {
+        await using var workspace = TempWorkspace.Create();
+        var solutionName = $"Sample.{ToPascalCase(featureModel)}.{ToPascalCase(studioHosting)}.Combined";
+        var outputPath = Path.Combine(workspace.Path, "output");
+        var hivePath = Path.Combine(workspace.Path, "hive");
+
+        Directory.CreateDirectory(outputPath);
+        Directory.CreateDirectory(hivePath);
+
+        await DotNet.RunAsync("new", "install", _fixture.PackagePath, "--debug:custom-hive", hivePath);
+        await DotNet.RunAsync("new", "elsa-combined", "-n", solutionName, "-o", outputPath, "--feature-model", featureModel, "--studio-hosting", studioHosting, "--debug:custom-hive", hivePath);
+        await DotNet.RunAsync("build", Path.Combine(outputPath, $"{solutionName}.slnx"));
+    }
+
+    private static string ToPascalCase(string value)
+    {
+        return string.Concat(value[..1].ToUpperInvariant(), value[1..]);
+    }
 }
 
 public sealed class TemplatePackageFixture : IAsyncLifetime
