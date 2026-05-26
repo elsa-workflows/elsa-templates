@@ -11,12 +11,12 @@
 
 ## Slice 2: Elsa Server Template
 
-- [ ] Add `elsa-server` template metadata.
-- [ ] Add static feature model host.
-- [ ] Add shell feature model host.
-- [ ] Add generated solution/project naming support.
-- [ ] Add smoke tests for both feature models.
-- [ ] Verify generated outputs restore and build.
+- [x] Add `elsa-server` template metadata.
+- [x] Add static feature model host.
+- [x] Add shell feature model host.
+- [x] Add generated solution/project naming support.
+- [x] Add smoke tests for both feature models.
+- [x] Verify generated outputs restore and build.
 
 ## Slice 3: Elsa Studio Template
 
