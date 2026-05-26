@@ -1,0 +1,156 @@
+name: Packages
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+  release:
+    types:
+      - published
+      - prereleased
+
+permissions:
+  contents: read
+
+env:
+  BASE_VERSION: 3.7.0
+  FEEDZ_FEED_SOURCE: https://f.feedz.io/elsa-workflows/elsa-3/nuget/index.json
+  NUGET_FEED_SOURCE: https://api.nuget.org/v3/index.json
+  DOTNET_VERSION: 10.0.x
+
+concurrency:
+  group: packages-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  build:
+    name: Build packages
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Verify release tag is on main
+        if: ${{ github.event_name == 'release' }}
+        run: |
+          set -euo pipefail
+          git fetch --no-tags --prune origin +refs/heads/main:refs/remotes/origin/main
+          TAG_COMMIT="$(git rev-list -n 1 "${GITHUB_REF_NAME}")"
+          git merge-base --is-ancestor "${TAG_COMMIT}" origin/main
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+
+      - name: Show .NET info
+        run: |
+          dotnet --info
+          dotnet --list-sdks
+
+      - name: Cache NuGet packages
+        uses: actions/cache@v4
+        with:
+          path: ~/.nuget/packages
+          key: ${{ runner.os }}-nuget-${{ hashFiles('**/Directory.Packages.props', '**/*.csproj') }}
+          restore-keys: |
+            ${{ runner.os }}-nuget-
+
+      - name: Set package version
+        run: |
+          set -euo pipefail
+
+          if [[ "${GITHUB_EVENT_NAME}" == "release" ]]; then
+            VERSION="${GITHUB_REF_NAME#v}"
+          else
+            VERSION="${BASE_VERSION}-preview.${GITHUB_RUN_NUMBER}"
+          fi
+
+          echo "VERSION=${VERSION}" >> "${GITHUB_ENV}"
+          echo "Package version: ${VERSION}"
+
+      - name: Restore
+        run: dotnet restore Elsa.Templates.slnx
+
+      - name: Build
+        run: dotnet build Elsa.Templates.slnx --configuration Release --no-restore
+
+      - name: Test
+        run: dotnet test test/Elsa.Templates.Tests/Elsa.Templates.Tests.csproj --configuration Release --no-build
+
+      - name: Pack
+        run: |
+          rm -rf artifacts/packages
+          dotnet pack src/Elsa.Templates/Elsa.Templates.csproj \
+            --configuration Release \
+            --no-build \
+            --output artifacts/packages \
+            /p:Version="${VERSION}" \
+            /p:PackageVersion="${VERSION}" \
+            /p:ContinuousIntegrationBuild=true
+
+      - name: Upload packages
+        uses: actions/upload-artifact@v4
+        with:
+          name: elsa-template-packages
+          path: artifacts/packages/*.nupkg
+          if-no-files-found: error
+
+  publish_feedz:
+    name: Publish to feedz.io
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    if: ${{ github.event_name == 'push' || github.event_name == 'release' }}
+
+    steps:
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+
+      - name: Download packages
+        uses: actions/download-artifact@v4
+        with:
+          name: elsa-template-packages
+
+      - name: Publish to feedz.io
+        run: |
+          set -euo pipefail
+          for package in *.nupkg; do
+            dotnet nuget push "${package}" --api-key "${FEEDZ_API_KEY}" --source "${FEEDZ_FEED_SOURCE}" --skip-duplicate
+          done
+        env:
+          FEEDZ_API_KEY: ${{ secrets.FEEDZ_API_KEY }}
+
+  publish_nuget:
+    name: Publish to nuget.org
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    if: ${{ github.event_name == 'release' }}
+
+    steps:
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+
+      - name: Download packages
+        uses: actions/download-artifact@v4
+        with:
+          name: elsa-template-packages
+
+      - name: Publish to nuget.org
+        run: |
+          set -euo pipefail
+          for package in *.nupkg; do
+            dotnet nuget push "${package}" --api-key "${NUGET_API_KEY}" --source "${NUGET_FEED_SOURCE}" --skip-duplicate
+          done
+        env:
+          NUGET_API_KEY: ${{ secrets.NUGET_API_KEY }}
