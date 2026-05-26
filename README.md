@@ -25,6 +25,46 @@ dotnet pack src/Elsa.Templates/Elsa.Templates.csproj
 dotnet new install artifacts/package/release/Elsa.Templates.*.nupkg
 ```
 
+## Usage
+
+Create an Elsa Server using static feature registration:
+
+```bash
+dotnet new elsa-server -n MyElsaServer --feature-model static
+```
+
+Create an Elsa Server using CShells:
+
+```bash
+dotnet new elsa-server -n MyElsaServer --feature-model shell
+```
+
+Create an Elsa Studio solution:
+
+```bash
+dotnet new elsa-studio -n MyElsaStudio --hosting server
+dotnet new elsa-studio -n MyElsaStudio --hosting wasm
+dotnet new elsa-studio -n MyElsaStudio --hosting hybrid
+```
+
+Create a combined Elsa Server + Studio solution:
+
+```bash
+dotnet new elsa-combined -n MyElsaApp --feature-model static --studio-hosting server
+dotnet new elsa-combined -n MyElsaApp --feature-model shell --studio-hosting wasm
+dotnet new elsa-combined -n MyElsaApp --feature-model shell --studio-hosting hybrid
+```
+
+Hybrid Studio output includes a host project and a WASM client project. The generated host reads `Studio:HostingModel` from configuration so the runtime can start Studio as `Server` or `Wasm`.
+
+## Verification
+
+The smoke tests pack the template package, install it into an isolated template hive, generate every supported option combination, and build the generated outputs.
+
+```bash
+dotnet test test/Elsa.Templates.Tests/Elsa.Templates.Tests.csproj
+```
+
 ## Development
 
 See [Roadmap](docs/roadmap.md) and [Tasks](docs/tasks.md).

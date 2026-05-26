@@ -37,8 +37,8 @@
 
 ## Slice 5: Documentation and Release Readiness
 
-- [ ] Expand README usage examples.
-- [ ] Document package/version branch policy.
-- [ ] Add CI workflow.
-- [ ] Run full smoke test suite.
+- [x] Expand README usage examples.
+- [x] Document package/version branch policy.
+- [x] Add CI workflow.
+- [x] Run full smoke test suite.
 - [ ] Push final state.
