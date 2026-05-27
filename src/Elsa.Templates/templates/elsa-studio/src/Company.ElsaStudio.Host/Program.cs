@@ -20,6 +20,7 @@ using Elsa.Studio.Workflows.Extensions;
 using Microsoft.AspNetCore.StaticFiles;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Company.ElsaStudio.Host;
+using Company.ElsaStudio.Host.Components;
 
 var builder = WebApplication.CreateBuilder(args);
 var configuration = builder.Configuration;
@@ -31,10 +32,11 @@ builder.Services.AddRazorPages();
 
 if (useServerHosting)
 {
-    builder.Services.AddServerSideBlazor(options =>
-    {
-        options.RootComponents.MaxJSRootComponents = 1000;
-    });
+    builder.Services.AddRazorComponents()
+        .AddInteractiveServerComponents(options =>
+        {
+            options.RootComponents.MaxJSRootComponents = 1000;
+        });
 
     var authenticationHandler = ConfigureAuthentication(builder.Services, configuration);
     var backendApiConfig = new BackendApiConfig
@@ -88,8 +90,10 @@ if (useServerHosting)
     app.UseElsaLocalization();
     app.UseAuthentication();
     app.UseAuthorization();
+    app.UseAntiforgery();
     app.MapControllers();
-    app.MapBlazorHub();
+    app.MapRazorComponents<AppHost>()
+        .AddInteractiveServerRenderMode();
     app.MapFallbackToPage("/_Host");
 }
 else
