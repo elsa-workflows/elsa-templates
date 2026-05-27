@@ -27,7 +27,7 @@ public class TemplateSmokeTests : IClassFixture<TemplatePackageFixture>
 
         await DotNet.RunAsync("new", "install", _fixture.PackagePath, "--debug:custom-hive", hivePath);
         await DotNet.RunAsync("new", "elsa-server", "-n", projectName, "-o", outputPath, "--feature-model", featureModel, "--debug:custom-hive", hivePath);
-        await DotNet.RunAsync("build", Path.Combine(outputPath, $"{projectName}.csproj"));
+        await DotNet.RunAsync("build", Path.Combine(outputPath, $"{projectName}.slnx"));
     }
 
     [Theory]

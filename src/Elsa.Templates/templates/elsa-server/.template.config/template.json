@@ -13,7 +13,7 @@
   "preferNameDirectory": true,
   "tags": {
     "language": "C#",
-    "type": "project"
+    "type": "solution"
   },
   "symbols": {
     "feature-model": {
