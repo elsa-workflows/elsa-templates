@@ -19,15 +19,17 @@ using Elsa.Studio.Translations;
 using Elsa.Studio.Workflows.Extensions;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Company.ElsaStudio.Server;
+using Company.ElsaStudio.Server.Components;
 
 var builder = WebApplication.CreateBuilder(args);
 var configuration = builder.Configuration;
 
 builder.Services.AddRazorPages();
-builder.Services.AddServerSideBlazor(options =>
-{
-    options.RootComponents.MaxJSRootComponents = 1000;
-});
+builder.Services.AddRazorComponents()
+    .AddInteractiveServerComponents(options =>
+    {
+        options.RootComponents.MaxJSRootComponents = 1000;
+    });
 
 var authenticationHandler = ConfigureAuthentication(builder.Services, configuration);
 var backendApiConfig = new BackendApiConfig
@@ -64,8 +66,10 @@ app.UseStaticFiles();
 app.UseRouting();
 app.UseAuthentication();
 app.UseAuthorization();
+app.UseAntiforgery();
 app.MapControllers();
-app.MapBlazorHub();
+app.MapRazorComponents<AppHost>()
+    .AddInteractiveServerRenderMode();
 app.MapFallbackToPage("/_Host");
 app.Run();
 
