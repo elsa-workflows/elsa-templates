@@ -17,7 +17,9 @@
         <PackageReference Include="Elsa.Studio.Login" Version="3.7.0" />
         <PackageReference Include="Elsa.Studio.Login.BlazorServer" Version="3.7.0" />
         <PackageReference Include="Elsa.Studio.Dashboard" Version="3.7.0" />
+        <!--#if (withLabels)-->
         <PackageReference Include="Elsa.Studio.Labels" Version="3.7.0" />
+        <!--#endif-->
         <PackageReference Include="Elsa.Studio.Localization.BlazorServer" Version="3.7.0" />
         <PackageReference Include="Elsa.Studio.Workflows" Version="3.7.0" />
         <PackageReference Include="Elsa.Studio.Workflows.Designer" Version="3.7.0" />

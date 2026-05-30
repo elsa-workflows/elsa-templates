@@ -17,17 +17,25 @@ public class TemplateSmokeTests : IClassFixture<TemplatePackageFixture>
     [InlineData("shell")]
     public async Task ElsaServerTemplateBuilds(string featureModel)
     {
-        await using var workspace = TempWorkspace.Create();
         var projectName = $"Sample.{featureModel}.Server";
-        var outputPath = Path.Combine(workspace.Path, "output");
-        var hivePath = Path.Combine(workspace.Path, "hive");
+        await GenerateAndBuildAsync("elsa-server", projectName, "--feature-model", featureModel);
+    }
 
-        Directory.CreateDirectory(outputPath);
-        Directory.CreateDirectory(hivePath);
+    [Theory]
+    [InlineData("sqlite")]
+    [InlineData("sqlserver")]
+    [InlineData("postgresql")]
+    [InlineData("oracle")]
+    public async Task ElsaServerTemplateBuildsWithStaticPersistence(string persistence)
+    {
+        var projectName = $"Sample.{ToPascalCase(persistence)}.Server";
+        await GenerateAndBuildAsync("elsa-server", projectName, "--feature-model", "static", "--persistence", persistence);
+    }
 
-        await DotNet.RunAsync("new", "install", _fixture.PackagePath, "--debug:custom-hive", hivePath);
-        await DotNet.RunAsync("new", "elsa-server", "-n", projectName, "-o", outputPath, "--feature-model", featureModel, "--debug:custom-hive", hivePath);
-        await DotNet.RunAsync("build", Path.Combine(outputPath, $"{projectName}.slnx"));
+    [Fact]
+    public async Task ElsaServerTemplateBuildsWithShellPersistence()
+    {
+        await GenerateAndBuildAsync("elsa-server", "Sample.Shell.PostgreSql.Server", "--feature-model", "shell", "--persistence", "postgresql");
     }
 
     [Theory]
@@ -36,17 +44,20 @@ public class TemplateSmokeTests : IClassFixture<TemplatePackageFixture>
     [InlineData("hybrid")]
     public async Task ElsaStudioTemplateBuilds(string hosting)
     {
-        await using var workspace = TempWorkspace.Create();
         var solutionName = $"Sample.{hosting}.Studio";
-        var outputPath = Path.Combine(workspace.Path, "output");
-        var hivePath = Path.Combine(workspace.Path, "hive");
+        await GenerateAndBuildAsync("elsa-studio", solutionName, "--hosting", hosting);
+    }
 
-        Directory.CreateDirectory(outputPath);
-        Directory.CreateDirectory(hivePath);
+    [Theory]
+    [InlineData("server", "open-id-connect")]
+    [InlineData("wasm", "elsa-login")]
+    [InlineData("hybrid", "open-id-connect")]
+    public async Task ElsaStudioTemplateBuildsWithAuthAndLabelsModule(string hosting, string authProvider)
+    {
+        var solutionName = $"Sample.{ToPascalCase(hosting)}.{ToPascalCase(authProvider)}.Studio";
+        var options = new[] { "--hosting", hosting, "--auth-provider", authProvider, "--with-labels" };
 
-        await DotNet.RunAsync("new", "install", _fixture.PackagePath, "--debug:custom-hive", hivePath);
-        await DotNet.RunAsync("new", "elsa-studio", "-n", solutionName, "-o", outputPath, "--hosting", hosting, "--debug:custom-hive", hivePath);
-        await DotNet.RunAsync("build", Path.Combine(outputPath, $"{solutionName}.slnx"));
+        await GenerateAndBuildAsync("elsa-studio", solutionName, options);
     }
 
     [Theory]
@@ -58,8 +69,35 @@ public class TemplateSmokeTests : IClassFixture<TemplatePackageFixture>
     [InlineData("shell", "hybrid")]
     public async Task ElsaCombinedTemplateBuilds(string featureModel, string studioHosting)
     {
-        await using var workspace = TempWorkspace.Create();
         var solutionName = $"Sample.{ToPascalCase(featureModel)}.{ToPascalCase(studioHosting)}.Combined";
+        await GenerateAndBuildAsync("elsa-combined", solutionName, "--feature-model", featureModel, "--studio-hosting", studioHosting);
+    }
+
+    [Fact]
+    public async Task ElsaCombinedTemplateBuildsWithPersistenceAuthAndLabelsModule()
+    {
+        var solutionName = "Sample.Static.Hybrid.PostgreSql.OpenIdConnect.Combined";
+        var options = new[]
+        {
+            "--feature-model", "static",
+            "--studio-hosting", "hybrid",
+            "--persistence", "postgresql",
+            "--auth-provider", "open-id-connect",
+            "--with-labels"
+        };
+
+        await GenerateAndBuildAsync("elsa-combined", solutionName, options);
+    }
+
+    private static string ToPascalCase(string value)
+    {
+        var parts = value.Split('-', StringSplitOptions.RemoveEmptyEntries);
+        return string.Concat(parts.Select(part => string.Concat(part[..1].ToUpperInvariant(), part[1..])));
+    }
+
+    private async Task GenerateAndBuildAsync(string templateName, string solutionName, params string[] templateOptions)
+    {
+        await using var workspace = TempWorkspace.Create();
         var outputPath = Path.Combine(workspace.Path, "output");
         var hivePath = Path.Combine(workspace.Path, "hive");
 
@@ -67,13 +105,21 @@ public class TemplateSmokeTests : IClassFixture<TemplatePackageFixture>
         Directory.CreateDirectory(hivePath);
 
         await DotNet.RunAsync("new", "install", _fixture.PackagePath, "--debug:custom-hive", hivePath);
-        await DotNet.RunAsync("new", "elsa-combined", "-n", solutionName, "-o", outputPath, "--feature-model", featureModel, "--studio-hosting", studioHosting, "--debug:custom-hive", hivePath);
-        await DotNet.RunAsync("build", Path.Combine(outputPath, $"{solutionName}.slnx"));
-    }
 
-    private static string ToPascalCase(string value)
-    {
-        return string.Concat(value[..1].ToUpperInvariant(), value[1..]);
+        var newArguments = new List<string>
+        {
+            "new",
+            templateName,
+            "-n",
+            solutionName,
+            "-o",
+            outputPath
+        };
+        newArguments.AddRange(templateOptions);
+        newArguments.AddRange(["--debug:custom-hive", hivePath]);
+
+        await DotNet.RunAsync(newArguments.ToArray());
+        await DotNet.RunAsync("build", Path.Combine(outputPath, $"{solutionName}.slnx"));
     }
 }
 

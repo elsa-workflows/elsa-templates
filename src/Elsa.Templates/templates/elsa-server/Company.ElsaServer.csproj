@@ -13,7 +13,18 @@
         <PackageReference Include="Elsa.Workflows.Runtime" Version="3.7.0" />
         <PackageReference Include="Elsa.Workflows.Runtime.Distributed" Version="3.7.0" />
         <PackageReference Include="Elsa.Workflows.Api" Version="3.7.0" />
+        <!--#if (useSqlitePersistence)-->
         <PackageReference Include="Elsa.Persistence.EFCore.Sqlite" Version="3.7.0" />
+        <!--#endif-->
+        <!--#if (useSqlServerPersistence)-->
+        <PackageReference Include="Elsa.Persistence.EFCore.SqlServer" Version="3.7.0" />
+        <!--#endif-->
+        <!--#if (usePostgreSqlPersistence)-->
+        <PackageReference Include="Elsa.Persistence.EFCore.PostgreSql" Version="3.7.0" />
+        <!--#endif-->
+        <!--#if (useOraclePersistence)-->
+        <PackageReference Include="Elsa.Persistence.EFCore.Oracle" Version="3.7.0" />
+        <!--#endif-->
         <PackageReference Include="Elsa.Http" Version="3.7.0" />
         <PackageReference Include="Elsa.Identity" Version="3.7.0" />
         <PackageReference Include="Elsa.Scheduling" Version="3.7.0" />

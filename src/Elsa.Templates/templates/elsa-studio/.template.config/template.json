@@ -37,6 +37,32 @@
         }
       ]
     },
+    "auth-provider": {
+      "type": "parameter",
+      "datatype": "choice",
+      "defaultValue": "elsa-identity",
+      "description": "The Studio authentication provider to configure.",
+      "choices": [
+        {
+          "choice": "elsa-identity",
+          "description": "Use Elsa Identity username/password authentication."
+        },
+        {
+          "choice": "open-id-connect",
+          "description": "Use OpenID Connect authentication."
+        },
+        {
+          "choice": "elsa-login",
+          "description": "Use the legacy Elsa Login module."
+        }
+      ]
+    },
+    "with-labels": {
+      "type": "parameter",
+      "datatype": "bool",
+      "defaultValue": "false",
+      "description": "Include the Studio Labels module."
+    },
     "useServerHosting": {
       "type": "computed",
       "value": "(hosting == \"server\")"
@@ -48,6 +74,22 @@
     "useHybridHosting": {
       "type": "computed",
       "value": "(hosting == \"hybrid\")"
+    },
+    "useElsaIdentityAuth": {
+      "type": "computed",
+      "value": "(auth-provider == \"elsa-identity\")"
+    },
+    "useOpenIdConnectAuth": {
+      "type": "computed",
+      "value": "(auth-provider == \"open-id-connect\")"
+    },
+    "useElsaLoginAuth": {
+      "type": "computed",
+      "value": "(auth-provider == \"elsa-login\")"
+    },
+    "withLabels": {
+      "type": "computed",
+      "value": "(with-labels)"
     }
   },
   "sources": [

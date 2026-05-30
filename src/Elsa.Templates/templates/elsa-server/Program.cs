@@ -56,6 +56,18 @@ var configuration = builder.Configuration;
 var services = builder.Services;
 var identitySection = configuration.GetSection("Identity");
 var identityTokenSection = identitySection.GetSection("Tokens");
+#if (useSqlitePersistence)
+var persistenceConnectionString = configuration.GetConnectionString("Sqlite") ?? throw new InvalidOperationException("Connection string 'Sqlite' is missing.");
+#endif
+#if (useSqlServerPersistence)
+var persistenceConnectionString = configuration.GetConnectionString("SqlServer") ?? throw new InvalidOperationException("Connection string 'SqlServer' is missing.");
+#endif
+#if (usePostgreSqlPersistence)
+var persistenceConnectionString = configuration.GetConnectionString("PostgreSql") ?? throw new InvalidOperationException("Connection string 'PostgreSql' is missing.");
+#endif
+#if (useOraclePersistence)
+var persistenceConnectionString = configuration.GetConnectionString("Oracle") ?? throw new InvalidOperationException("Connection string 'Oracle' is missing.");
+#endif
 
 services.AddElsa(elsa =>
 {
@@ -69,8 +81,36 @@ services.AddElsa(elsa =>
         })
         .UseDefaultAuthentication()
         .UseWorkflows()
-        .UseWorkflowManagement(management => management.UseEntityFrameworkCore(ef => ef.UseSqlite()))
-        .UseWorkflowRuntime(runtime => runtime.UseEntityFrameworkCore(ef => ef.UseSqlite()))
+        .UseWorkflowManagement(management => management.UseEntityFrameworkCore(ef =>
+        {
+#if (useSqlitePersistence)
+            ef.UseSqlite(persistenceConnectionString);
+#endif
+#if (useSqlServerPersistence)
+            ef.UseSqlServer(persistenceConnectionString);
+#endif
+#if (usePostgreSqlPersistence)
+            ef.UsePostgreSql(persistenceConnectionString);
+#endif
+#if (useOraclePersistence)
+            ef.UseOracle(persistenceConnectionString);
+#endif
+        }))
+        .UseWorkflowRuntime(runtime => runtime.UseEntityFrameworkCore(ef =>
+        {
+#if (useSqlitePersistence)
+            ef.UseSqlite(persistenceConnectionString);
+#endif
+#if (useSqlServerPersistence)
+            ef.UseSqlServer(persistenceConnectionString);
+#endif
+#if (usePostgreSqlPersistence)
+            ef.UsePostgreSql(persistenceConnectionString);
+#endif
+#if (useOraclePersistence)
+            ef.UseOracle(persistenceConnectionString);
+#endif
+        }))
         .UseWorkflowsApi()
         .UseHttp(http => http.ConfigureHttpOptions = options => configuration.GetSection("Http").Bind(options))
         .UseScheduling()

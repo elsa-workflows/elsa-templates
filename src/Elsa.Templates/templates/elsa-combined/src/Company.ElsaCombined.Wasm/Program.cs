@@ -7,6 +7,9 @@ using Elsa.Studio.Contracts;
 using Elsa.Studio.Core.BlazorWasm.Extensions;
 using Elsa.Studio.Dashboard.Extensions;
 using Elsa.Studio.Extensions;
+#if (withLabels)
+using Elsa.Studio.Labels;
+#endif
 using Elsa.Studio.Localization.BlazorWasm.Extensions;
 using Elsa.Studio.Localization.Models;
 using Elsa.Studio.Login.BlazorWasm.Extensions;
@@ -42,6 +45,9 @@ services.AddShell();
 services.AddRemoteBackend(backendApiConfig);
 services.AddDashboardModule();
 services.AddWorkflowsModule();
+#if (withLabels)
+services.AddLabelsModule(backendApiConfig);
+#endif
 services.AddLocalizationModule(localizationConfig);
 
 var app = builder.Build();

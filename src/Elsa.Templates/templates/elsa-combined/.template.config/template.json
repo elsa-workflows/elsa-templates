@@ -53,6 +53,56 @@
         }
       ]
     },
+    "persistence": {
+      "type": "parameter",
+      "datatype": "choice",
+      "defaultValue": "sqlite",
+      "description": "The EF Core persistence provider to use for workflow storage.",
+      "choices": [
+        {
+          "choice": "sqlite",
+          "description": "Use SQLite persistence."
+        },
+        {
+          "choice": "sqlserver",
+          "description": "Use SQL Server persistence."
+        },
+        {
+          "choice": "postgresql",
+          "description": "Use PostgreSQL persistence."
+        },
+        {
+          "choice": "oracle",
+          "description": "Use Oracle persistence."
+        }
+      ]
+    },
+    "auth-provider": {
+      "type": "parameter",
+      "datatype": "choice",
+      "defaultValue": "elsa-identity",
+      "description": "The Studio authentication provider to configure.",
+      "choices": [
+        {
+          "choice": "elsa-identity",
+          "description": "Use Elsa Identity username/password authentication."
+        },
+        {
+          "choice": "open-id-connect",
+          "description": "Use OpenID Connect authentication."
+        },
+        {
+          "choice": "elsa-login",
+          "description": "Use the legacy Elsa Login module."
+        }
+      ]
+    },
+    "with-labels": {
+      "type": "parameter",
+      "datatype": "bool",
+      "defaultValue": "false",
+      "description": "Include the Studio Labels module."
+    },
     "useStaticFeatures": {
       "type": "computed",
       "value": "(feature-model == \"static\")"
@@ -72,6 +122,38 @@
     "useStudioHybrid": {
       "type": "computed",
       "value": "(studio-hosting == \"hybrid\")"
+    },
+    "useSqlitePersistence": {
+      "type": "computed",
+      "value": "(persistence == \"sqlite\")"
+    },
+    "useSqlServerPersistence": {
+      "type": "computed",
+      "value": "(persistence == \"sqlserver\")"
+    },
+    "usePostgreSqlPersistence": {
+      "type": "computed",
+      "value": "(persistence == \"postgresql\")"
+    },
+    "useOraclePersistence": {
+      "type": "computed",
+      "value": "(persistence == \"oracle\")"
+    },
+    "useElsaIdentityAuth": {
+      "type": "computed",
+      "value": "(auth-provider == \"elsa-identity\")"
+    },
+    "useOpenIdConnectAuth": {
+      "type": "computed",
+      "value": "(auth-provider == \"open-id-connect\")"
+    },
+    "useElsaLoginAuth": {
+      "type": "computed",
+      "value": "(auth-provider == \"elsa-login\")"
+    },
+    "withLabels": {
+      "type": "computed",
+      "value": "(with-labels)"
     }
   },
   "sources": [

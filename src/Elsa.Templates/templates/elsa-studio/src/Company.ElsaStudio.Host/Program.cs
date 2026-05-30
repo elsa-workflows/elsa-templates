@@ -8,6 +8,9 @@ using Elsa.Studio.Contracts;
 using Elsa.Studio.Core.BlazorServer.Extensions;
 using Elsa.Studio.Dashboard.Extensions;
 using Elsa.Studio.Extensions;
+#if (withLabels)
+using Elsa.Studio.Labels;
+#endif
 using Elsa.Studio.Localization.BlazorServer.Extensions;
 using Elsa.Studio.Localization.Models;
 using Elsa.Studio.Login.BlazorServer.Extensions;
@@ -55,6 +58,9 @@ if (useServerHosting)
     builder.Services.AddRemoteBackend(backendApiConfig);
     builder.Services.AddDashboardModule();
     builder.Services.AddWorkflowsModule();
+#if (withLabels)
+    builder.Services.AddLabelsModule(backendApiConfig);
+#endif
     builder.Services.AddLocalizationModule(localizationConfig);
     builder.Services.AddTranslations();
     builder.Services.AddSignalR(options => options.MaximumReceiveMessageSize = 5 * 1024 * 1000);
