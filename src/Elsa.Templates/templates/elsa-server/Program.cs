@@ -37,7 +37,7 @@ var app = builder.Build();
 if (app.Environment.IsDevelopment())
     app.UseDeveloperExceptionPage();
 
-app.MapHealthChecks("/");
+app.MapHealthChecks("/health");
 app.MapShells();
 app.UseAuthentication();
 app.UseAuthorization();
@@ -133,7 +133,7 @@ if (app.Environment.IsDevelopment())
     app.UseDeveloperExceptionPage();
 
 app.UseCors();
-app.MapHealthChecks("/");
+app.MapHealthChecks("/health");
 
 var apiEndpointOptions = app.Services.GetRequiredService<IOptions<ApiEndpointOptions>>().Value;
 var routePrefix = apiEndpointOptions.RoutePrefix;

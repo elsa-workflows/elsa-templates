@@ -36,7 +36,7 @@ var app = builder.Build();
 if (app.Environment.IsDevelopment())
     app.UseDeveloperExceptionPage();
 
-app.MapHealthChecks("/");
+app.MapHealthChecks("/health");
 app.MapShells();
 app.UseAuthentication();
 app.UseAuthorization();
