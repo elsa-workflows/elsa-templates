@@ -14,7 +14,7 @@ permissions:
   contents: read
 
 env:
-  BASE_VERSION: 3.7.0
+  BASE_VERSION: 3.7.1
   FEEDZ_FEED_SOURCE: https://f.feedz.io/elsa-workflows/elsa-3/nuget/index.json
   NUGET_FEED_SOURCE: https://api.nuget.org/v3/index.json
   DOTNET_VERSION: 10.0.x
