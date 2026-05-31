@@ -119,7 +119,19 @@ public class TemplateSmokeTests : IClassFixture<TemplatePackageFixture>
         newArguments.AddRange(["--debug:custom-hive", hivePath]);
 
         await DotNet.RunAsync(newArguments.ToArray());
+        AssertHealthChecksUseDedicatedEndpoint(outputPath);
         await DotNet.RunAsync("build", Path.Combine(outputPath, $"{solutionName}.slnx"));
+    }
+
+    private static void AssertHealthChecksUseDedicatedEndpoint(string outputPath)
+    {
+        var programFiles = Directory.GetFiles(outputPath, "Program.cs", SearchOption.AllDirectories);
+        var rootHealthCheckMappings = programFiles
+            .Where(file => File.ReadAllText(file).Contains("MapHealthChecks(\"/\")", StringComparison.Ordinal))
+            .Select(file => Path.GetRelativePath(outputPath, file))
+            .ToArray();
+
+        Assert.Empty(rootHealthCheckMappings);
     }
 }
 

@@ -194,7 +194,7 @@ else
 
 app.UseHttpsRedirection();
 app.UseCors();
-app.MapHealthChecks("/");
+app.MapHealthChecks("/health");
 app.UseStaticFiles(new StaticFileOptions
 {
     ContentTypeProvider = new FileExtensionContentTypeProvider
