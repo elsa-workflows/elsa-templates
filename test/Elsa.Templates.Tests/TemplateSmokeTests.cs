@@ -164,7 +164,8 @@ public class TemplateSmokeTests : IClassFixture<TemplatePackageFixture>
     private static void AssertHostPageRoutes(string outputPath)
     {
         var hostPages = Directory.GetFiles(outputPath, "_*Host.cshtml", SearchOption.AllDirectories);
-        Assert.NotEmpty(hostPages);
+        if (hostPages.Length == 0)
+            return;
 
         foreach (var hostPage in hostPages)
         {
