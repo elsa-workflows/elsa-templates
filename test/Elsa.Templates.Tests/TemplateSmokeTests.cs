@@ -131,7 +131,10 @@ public class TemplateSmokeTests : IClassFixture<TemplatePackageFixture>
             AssertHostPageRoutes(outputPath);
         }
         if (templateName is "elsa-server" or "elsa-combined")
+        {
+            AssertDashboardComposition(outputPath, templateOptions.Contains("shell", StringComparer.OrdinalIgnoreCase));
             AssertDeploymentOwnedIdentityConfiguration(outputPath);
+        }
         await DotNet.RunAsync("build", Path.Combine(outputPath, $"{solutionName}.slnx"));
     }
 
@@ -174,6 +177,24 @@ public class TemplateSmokeTests : IClassFixture<TemplatePackageFixture>
 
             Assert.Contains($"@page \"/{pageName}\"", pageText, StringComparison.Ordinal);
             Assert.DoesNotContain("@page \"/\"", pageText, StringComparison.Ordinal);
+        }
+    }
+
+    private static void AssertDashboardComposition(string outputPath, bool expectsShellFeatures)
+    {
+        var programText = string.Join(
+            Environment.NewLine,
+            Directory.GetFiles(outputPath, "Program.cs", SearchOption.AllDirectories).Select(File.ReadAllText));
+
+        if (expectsShellFeatures)
+        {
+            Assert.Contains("DashboardApiFeature", programText, StringComparison.Ordinal);
+            Assert.Contains("WorkflowRuntimeDashboardFeature", programText, StringComparison.Ordinal);
+        }
+        else
+        {
+            Assert.Contains("UseDashboardApi", programText, StringComparison.Ordinal);
+            Assert.Contains("UseWorkflowRuntimeDashboard", programText, StringComparison.Ordinal);
         }
     }
 

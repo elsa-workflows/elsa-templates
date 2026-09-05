@@ -13,6 +13,8 @@
         <PackageReference Include="Elsa.Workflows.Runtime" Version="3.8.0" />
         <PackageReference Include="Elsa.Workflows.Runtime.Distributed" Version="3.8.0" />
         <PackageReference Include="Elsa.Workflows.Api" Version="3.8.0" />
+        <PackageReference Include="Elsa.Dashboard.Api" Version="3.8.0" />
+        <PackageReference Include="Elsa.Workflows.Runtime.Dashboard" Version="3.8.0" />
         <!--#if (useSqlitePersistence)-->
         <PackageReference Include="Elsa.Persistence.EFCore.Sqlite" Version="3.8.0" />
         <!--#endif-->

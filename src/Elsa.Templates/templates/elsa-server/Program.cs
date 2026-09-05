@@ -2,11 +2,13 @@
 using CShells.AspNetCore.Configuration;
 using CShells.AspNetCore.Extensions;
 using CShells.DependencyInjection;
+using Elsa.Dashboard.Api.ShellFeatures;
 using Elsa.Identity.ShellFeatures;
 using Elsa.ShellFeatures;
 using Elsa.Workflows.Api.ShellFeatures;
 using Elsa.Workflows.Management.ShellFeatures;
 using Elsa.Workflows.Runtime.Distributed.ShellFeatures;
+using Elsa.Workflows.Runtime.Dashboard.ShellFeatures;
 using Elsa.Workflows.Runtime.ShellFeatures;
 using Elsa.Workflows.ShellFeatures;
 
@@ -27,6 +29,8 @@ builder.AddShells(shells => shells
             typeof(WorkflowsFeature),
             typeof(DistributedRuntimeFeature),
             typeof(WorkflowsApiFeature),
+            typeof(DashboardApiFeature),
+            typeof(WorkflowRuntimeDashboardFeature),
             typeof(IdentityFeature),
             typeof(DefaultAuthenticationFeature),
             typeof(DefaultAdminUserFeature));
@@ -116,6 +120,8 @@ services.AddElsa(elsa =>
 #endif
         }))
         .UseWorkflowsApi()
+        .UseDashboardApi()
+        .UseWorkflowRuntimeDashboard()
         .UseHttp(http => http.ConfigureHttpOptions = options => configuration.GetSection("Http").Bind(options))
         .UseScheduling()
         .UseJavaScript()
