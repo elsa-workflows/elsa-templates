@@ -240,6 +240,7 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           artifact-ids: ${{ steps.recovery_source.outputs.artifact_id }}
+          run-id: ${{ inputs.recovery_run_id }}
           path: packages
           merge-multiple: true
           github-token: ${{ github.token }}
