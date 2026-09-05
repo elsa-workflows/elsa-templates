@@ -1,4 +1,7 @@
 using System.Diagnostics;
+using System.IO.Compression;
+using System.Text.Json;
+using System.Xml.Linq;
 using Xunit;
 
 namespace Elsa.Templates.Tests;
@@ -119,8 +122,80 @@ public class TemplateSmokeTests : IClassFixture<TemplatePackageFixture>
         newArguments.AddRange(["--debug:custom-hive", hivePath]);
 
         await DotNet.RunAsync(newArguments.ToArray());
+        AssertGeneratedAppsettingsAreValid(outputPath);
         AssertHealthChecksUseDedicatedEndpoint(outputPath);
+        AssertPackageVersions(outputPath, TemplatePackageFixture.ElsaVersion, TemplatePackageFixture.CShellsVersion);
+        if (templateName is "elsa-studio" or "elsa-combined")
+            AssertStudioAuthenticationComposition(outputPath, !templateOptions.Contains("elsa-login", StringComparer.OrdinalIgnoreCase));
+        if (templateName is "elsa-server" or "elsa-combined")
+            AssertDeploymentOwnedIdentityConfiguration(outputPath);
         await DotNet.RunAsync("build", Path.Combine(outputPath, $"{solutionName}.slnx"));
+    }
+
+    private static void AssertStudioAuthenticationComposition(string outputPath, bool expectsSharedAuthenticationUi)
+    {
+        var programText = string.Join(
+            Environment.NewLine,
+            Directory.GetFiles(outputPath, "Program.cs", SearchOption.AllDirectories).Select(File.ReadAllText));
+
+        Assert.Contains("AddStudioAuthenticationMode", programText, StringComparison.Ordinal);
+        if (expectsSharedAuthenticationUi)
+            Assert.Contains("AddAuthenticationUI", programText, StringComparison.Ordinal);
+    }
+
+    private static void AssertGeneratedAppsettingsAreValid(string outputPath)
+    {
+        foreach (var appsettingsPath in Directory.GetFiles(outputPath, "appsettings*.json", SearchOption.AllDirectories))
+        {
+            try
+            {
+                using var document = JsonDocument.Parse(File.ReadAllText(appsettingsPath));
+            }
+            catch (JsonException exception)
+            {
+                throw new Xunit.Sdk.XunitException($"Generated configuration is not valid JSON: {appsettingsPath}{Environment.NewLine}{exception.Message}");
+            }
+        }
+    }
+
+    private static void AssertDeploymentOwnedIdentityConfiguration(string outputPath)
+    {
+        var appsettingsPath = Directory
+            .GetFiles(outputPath, "appsettings.json", SearchOption.AllDirectories)
+            .Single(file => !file.Contains($"{Path.DirectorySeparatorChar}bin{Path.DirectorySeparatorChar}", StringComparison.Ordinal) &&
+                            !file.Contains($"{Path.DirectorySeparatorChar}obj{Path.DirectorySeparatorChar}", StringComparison.Ordinal) &&
+                            File.ReadAllText(file).Contains("\"CShells\"", StringComparison.Ordinal));
+        var appsettings = File.ReadAllText(appsettingsPath);
+        var developmentSettings = File.ReadAllText(Path.Combine(Path.GetDirectoryName(appsettingsPath)!, "appsettings.Development.json"));
+
+        Assert.DoesNotContain("HashedPassword", appsettings, StringComparison.Ordinal);
+        Assert.DoesNotContain("HashedApiKey", appsettings, StringComparison.Ordinal);
+        Assert.Contains("development-only-secret-signing-key-change-before-production", developmentSettings, StringComparison.Ordinal);
+        Assert.Contains("DefaultAdminUser", developmentSettings, StringComparison.Ordinal);
+    }
+
+    private static void AssertPackageVersions(string outputPath, string expectedElsaVersion, string expectedCShellsVersion)
+    {
+        var projectFiles = Directory.GetFiles(outputPath, "*.csproj", SearchOption.AllDirectories);
+        Assert.NotEmpty(projectFiles);
+
+        foreach (var projectFile in projectFiles)
+        {
+            var document = XDocument.Load(projectFile);
+            var packageReferences = document
+                .Descendants("PackageReference")
+                .Select(reference => new
+                {
+                    Include = (string?)reference.Attribute("Include"),
+                    Version = (string?)reference.Attribute("Version")
+                });
+
+            foreach (var packageReference in packageReferences.Where(reference => reference.Include?.StartsWith("Elsa", StringComparison.Ordinal) == true))
+                Assert.Equal(expectedElsaVersion, packageReference.Version);
+
+            foreach (var packageReference in packageReferences.Where(reference => reference.Include?.StartsWith("CShells", StringComparison.Ordinal) == true))
+                Assert.Equal(expectedCShellsVersion, packageReference.Version);
+        }
     }
 
     private static void AssertHealthChecksUseDedicatedEndpoint(string outputPath)
@@ -137,6 +212,9 @@ public class TemplateSmokeTests : IClassFixture<TemplatePackageFixture>
 
 public sealed class TemplatePackageFixture : IAsyncLifetime
 {
+    public const string ElsaVersion = "3.8.0";
+    public const string CShellsVersion = "0.0.28";
+
     public string PackagePath { get; private set; } = null!;
 
     public async Task InitializeAsync()
@@ -144,13 +222,43 @@ public sealed class TemplatePackageFixture : IAsyncLifetime
         var repositoryRoot = RepositoryPaths.Root;
         var projectPath = Path.Combine(repositoryRoot, "src", "Elsa.Templates", "Elsa.Templates.csproj");
 
-        await DotNet.RunAsync("pack", projectPath, "-c", "Release");
+        var expectedCommit = RepositoryPaths.Commit;
+        await DotNet.RunAsync(
+            "pack",
+            projectPath,
+            "-c",
+            "Release",
+            "/p:Version=" + ElsaVersion,
+            "/p:PackageVersion=" + ElsaVersion,
+            "/p:RepositoryCommit=" + expectedCommit,
+            "/p:ContinuousIntegrationBuild=true");
 
         var packageDirectory = Path.Combine(repositoryRoot, "artifacts", "package", "release");
         PackagePath = Directory
             .GetFiles(packageDirectory, "Elsa.Templates.*.nupkg")
             .OrderByDescending(File.GetLastWriteTimeUtc)
             .First();
+
+        Assert.Equal($"Elsa.Templates.{ElsaVersion}.nupkg", Path.GetFileName(PackagePath));
+        AssertRepositoryCommit(PackagePath, expectedCommit);
+    }
+
+    private static void AssertRepositoryCommit(string packagePath, string expectedCommit)
+    {
+        using var archive = ZipFile.OpenRead(packagePath);
+        var nuspecEntry = archive.GetEntry("Elsa.Templates.nuspec");
+        Assert.NotNull(nuspecEntry);
+
+        using var stream = nuspecEntry!.Open();
+        var document = XDocument.Load(stream);
+        var repository = document
+            .Descendants()
+            .Where(element => element.Name.LocalName == "repository")
+            .SingleOrDefault();
+
+        Assert.NotNull(repository);
+        Assert.Equal("https://github.com/elsa-workflows/elsa-templates", (string?)repository!.Attribute("url"));
+        Assert.Equal(expectedCommit, (string?)repository.Attribute("commit"));
     }
 
     public Task DisposeAsync()
@@ -162,6 +270,7 @@ public sealed class TemplatePackageFixture : IAsyncLifetime
 public static class RepositoryPaths
 {
     public static string Root { get; } = FindRoot();
+    public static string Commit { get; } = ResolveCommit();
 
     private static string FindRoot()
     {
@@ -176,6 +285,28 @@ public static class RepositoryPaths
         }
 
         throw new InvalidOperationException("Could not locate repository root.");
+    }
+
+    private static string ResolveCommit()
+    {
+        var startInfo = new ProcessStartInfo
+        {
+            FileName = "git",
+            WorkingDirectory = Root,
+            RedirectStandardOutput = true,
+            RedirectStandardError = true
+        };
+        startInfo.ArgumentList.Add("rev-parse");
+        startInfo.ArgumentList.Add("HEAD");
+
+        using var process = Process.Start(startInfo) ?? throw new InvalidOperationException("Failed to start git process.");
+        var output = process.StandardOutput.ReadToEnd().Trim();
+        process.WaitForExit();
+
+        if (process.ExitCode != 0 || string.IsNullOrWhiteSpace(output))
+            throw new InvalidOperationException("Could not determine the repository commit.");
+
+        return output;
     }
 }
 

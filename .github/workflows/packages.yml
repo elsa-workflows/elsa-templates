@@ -8,13 +8,12 @@ on:
   release:
     types:
       - published
-      - prereleased
 
 permissions:
   contents: read
 
 env:
-  BASE_VERSION: 3.7.1
+  BASE_VERSION: 3.8.0
   FEEDZ_FEED_SOURCE: https://f.feedz.io/elsa-workflows/elsa-3/nuget/index.json
   NUGET_FEED_SOURCE: https://api.nuget.org/v3/index.json
   DOTNET_VERSION: 10.0.x
@@ -35,13 +34,21 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Verify release tag is on main
+      - name: Verify release tag is on its release source
         if: ${{ github.event_name == 'release' }}
         run: |
           set -euo pipefail
           git fetch --no-tags --prune origin +refs/heads/main:refs/remotes/origin/main
           TAG_COMMIT="$(git rev-list -n 1 "${GITHUB_REF_NAME}")"
-          git merge-base --is-ancestor "${TAG_COMMIT}" origin/main
+          VERSION="${GITHUB_REF_NAME#v}"
+          if [[ "${VERSION}" == *-* ]]; then
+            BASE_VERSION="${VERSION%%-*}"
+            RELEASE_BRANCH="origin/release/${BASE_VERSION}"
+            git fetch --no-tags --prune origin "+refs/heads/release/${BASE_VERSION}:refs/remotes/${RELEASE_BRANCH}"
+            git merge-base --is-ancestor "${TAG_COMMIT}" "${RELEASE_BRANCH}"
+          else
+            git merge-base --is-ancestor "${TAG_COMMIT}" origin/main
+          fi
 
       - name: Setup .NET
         uses: actions/setup-dotnet@v4
@@ -92,7 +99,16 @@ jobs:
             --output artifacts/packages \
             /p:Version="${VERSION}" \
             /p:PackageVersion="${VERSION}" \
+            /p:RepositoryCommit="${GITHUB_SHA}" \
             /p:ContinuousIntegrationBuild=true
+
+      - name: Verify package inventory and provenance
+        run: |
+          set -euo pipefail
+          package="artifacts/packages/Elsa.Templates.${VERSION}.nupkg"
+          test -f "${package}"
+          test "$(find artifacts/packages -maxdepth 1 -type f -name '*.nupkg' | wc -l | tr -d ' ')" = 1
+          unzip -p "${package}" Elsa.Templates.nuspec | grep -F "commit=\"${GITHUB_SHA}\""
 
       - name: Upload packages
         uses: actions/upload-artifact@v4

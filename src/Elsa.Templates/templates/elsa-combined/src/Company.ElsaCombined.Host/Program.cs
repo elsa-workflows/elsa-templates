@@ -1,7 +1,11 @@
 using Company.ElsaCombined.Host;
+using Elsa.Studio.Authentication.Abstractions.Models;
 using Elsa.Studio.Authentication.ElsaIdentity.BlazorServer.Extensions;
 using Elsa.Studio.Authentication.ElsaIdentity.HttpMessageHandlers;
 using Elsa.Studio.Authentication.ElsaIdentity.UI.Extensions;
+using Elsa.Studio.Authentication.Themes.Extensions;
+using Elsa.Studio.Authentication.UI.Extensions;
+using Elsa.Studio.Authentication.UI.Options;
 using Elsa.Studio.Authentication.OpenIdConnect.BlazorServer.Extensions;
 using Elsa.Studio.Authentication.OpenIdConnect.HttpMessageHandlers;
 using Elsa.Studio.Branding;
@@ -27,6 +31,7 @@ using Microsoft.Extensions.DependencyInjection.Extensions;
 using CShells.AspNetCore.Configuration;
 using CShells.AspNetCore.Extensions;
 using CShells.DependencyInjection;
+using Elsa.Identity.ShellFeatures;
 using Elsa.ShellFeatures;
 using Elsa.Workflows.Api.ShellFeatures;
 using Elsa.Workflows.Management.ShellFeatures;
@@ -82,7 +87,10 @@ builder.AddShells(shells => shells
             typeof(WorkflowRuntimeFeature),
             typeof(WorkflowsFeature),
             typeof(DistributedRuntimeFeature),
-            typeof(WorkflowsApiFeature));
+            typeof(WorkflowsApiFeature),
+            typeof(IdentityFeature),
+            typeof(DefaultAuthenticationFeature),
+            typeof(DefaultAdminUserFeature));
     }));
 
 services.AddAuthentication();
@@ -142,6 +150,7 @@ services.AddElsa(elsa =>
 });
 
 services.AddControllers();
+services.PostConfigure<ApiEndpointOptions>(options => configuration.GetSection("Api").Bind(options));
 #endif
 
 #if (useStudioServer)
@@ -156,6 +165,7 @@ if (useStudioServer)
 {
     services.AddServerSideBlazor(options => options.RootComponents.MaxJSRootComponents = 1000);
 
+    var selectedAuthProvider = ConfigureStudioAuthenticationMode(services, configuration);
     var authenticationHandler = ConfigureStudioAuthentication(services, configuration);
     var backendApiConfig = new BackendApiConfig
     {
@@ -179,6 +189,12 @@ if (useStudioServer)
     services.AddLocalizationModule(localizationConfig);
     services.AddTranslations();
     services.AddSignalR(options => options.MaximumReceiveMessageSize = 5 * 1024 * 1000);
+    if (selectedAuthProvider != StudioAuthenticationProvider.ElsaLogin)
+    {
+        services
+            .AddAuthenticationUI(configuration.GetSection(LoginThemeOptions.SectionName))
+            .AddElsaStudioLoginThemes();
+    }
 }
 else
 {
@@ -266,4 +282,17 @@ static Type ConfigureStudioAuthentication(IServiceCollection services, IConfigur
     }
 
     throw new InvalidOperationException($"Unsupported Authentication:Provider value '{authProvider}'.");
+}
+
+static StudioAuthenticationProvider ConfigureStudioAuthenticationMode(IServiceCollection services, IConfiguration configuration)
+{
+    var authProvider = configuration["Authentication:Provider"];
+    if (string.IsNullOrWhiteSpace(authProvider))
+        authProvider = "ElsaIdentity";
+
+    if (!Enum.TryParse<StudioAuthenticationProvider>(authProvider, true, out var selectedAuthProvider))
+        throw new InvalidOperationException($"Unsupported Authentication:Provider value '{authProvider}'.");
+
+    services.AddStudioAuthenticationMode(options => options.Provider = selectedAuthProvider);
+    return selectedAuthProvider;
 }
