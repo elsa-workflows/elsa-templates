@@ -2,6 +2,7 @@
     <PropertyGroup>
         <TargetFramework>net10.0</TargetFramework>
         <PackageId>Elsa.Templates</PackageId>
+        <Version>3.8.0</Version>
         <Title>Elsa Templates</Title>
         <Description>.NET templates for creating Elsa Server and Elsa Studio solutions.</Description>
         <Authors>Elsa Workflows</Authors>
@@ -9,6 +10,7 @@
         <PackageProjectUrl>https://github.com/elsa-workflows/elsa-templates</PackageProjectUrl>
         <RepositoryUrl>https://github.com/elsa-workflows/elsa-templates</RepositoryUrl>
         <RepositoryType>git</RepositoryType>
+        <RepositoryCommit Condition="'$(RepositoryCommit)' == '' and '$(SourceRevisionId)' != ''">$(SourceRevisionId)</RepositoryCommit>
         <PackageLicenseExpression>MIT</PackageLicenseExpression>
         <PackageReadmeFile>README.md</PackageReadmeFile>
         <PackageTags>elsa;workflow;templates;dotnet-new</PackageTags>

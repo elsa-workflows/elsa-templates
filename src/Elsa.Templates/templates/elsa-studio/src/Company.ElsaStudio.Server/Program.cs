@@ -1,6 +1,10 @@
 using Elsa.Studio.Authentication.ElsaIdentity.BlazorServer.Extensions;
 using Elsa.Studio.Authentication.ElsaIdentity.HttpMessageHandlers;
 using Elsa.Studio.Authentication.ElsaIdentity.UI.Extensions;
+using Elsa.Studio.Authentication.Abstractions.Models;
+using Elsa.Studio.Authentication.Themes.Extensions;
+using Elsa.Studio.Authentication.UI.Extensions;
+using Elsa.Studio.Authentication.UI.Options;
 using Elsa.Studio.Authentication.OpenIdConnect.BlazorServer.Extensions;
 using Elsa.Studio.Authentication.OpenIdConnect.HttpMessageHandlers;
 using Elsa.Studio.Branding;
@@ -34,6 +38,7 @@ builder.Services.AddRazorComponents()
         options.RootComponents.MaxJSRootComponents = 1000;
     });
 
+var selectedAuthProvider = ConfigureStudioAuthenticationMode(builder.Services, configuration);
 var authenticationHandler = ConfigureAuthentication(builder.Services, configuration);
 var backendApiConfig = new BackendApiConfig
 {
@@ -57,6 +62,12 @@ builder.Services.AddLabelsModule(backendApiConfig);
 builder.Services.AddLocalizationModule(localizationConfig);
 builder.Services.AddTranslations();
 builder.Services.AddSignalR(options => options.MaximumReceiveMessageSize = 5 * 1024 * 1000);
+if (selectedAuthProvider != StudioAuthenticationProvider.ElsaLogin)
+{
+    builder.Services
+        .AddAuthenticationUI(configuration.GetSection(LoginThemeOptions.SectionName))
+        .AddElsaStudioLoginThemes();
+}
 
 var app = builder.Build();
 
@@ -105,4 +116,17 @@ static Type ConfigureAuthentication(IServiceCollection services, IConfiguration 
     }
 
     throw new InvalidOperationException($"Unsupported Authentication:Provider value '{authProvider}'.");
+}
+
+static StudioAuthenticationProvider ConfigureStudioAuthenticationMode(IServiceCollection services, IConfiguration configuration)
+{
+    var authProvider = configuration["Authentication:Provider"];
+    if (string.IsNullOrWhiteSpace(authProvider))
+        authProvider = "ElsaIdentity";
+
+    if (!Enum.TryParse<StudioAuthenticationProvider>(authProvider, true, out var selectedAuthProvider))
+        throw new InvalidOperationException($"Unsupported Authentication:Provider value '{authProvider}'.");
+
+    services.AddStudioAuthenticationMode(options => options.Provider = selectedAuthProvider);
+    return selectedAuthProvider;
 }

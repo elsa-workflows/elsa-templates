@@ -4,15 +4,13 @@
 
 ## Version Policy
 
-The `main` branch targets the latest stable Elsa release. At repository creation time this is Elsa `3.7.0`.
+The `main` branch targets the latest stable Elsa release. The current stable release is Elsa `3.8.0`.
 
-Version-specific branches may target exact stable or preview versions, for example:
+Preview and release-candidate work uses a matching `release/<base-version>` branch, for example `release/3.9.0`, and produces versions such as `3.9.0-preview.1234`.
 
-- `3.7.0`
-- `3.8.0-preview`
-- `3.8.0-preview.1234`
+The package workflow publishes stable packages only for a published release whose tag is reachable from `main`. Prerelease and release-candidate tags must be reachable from their matching `release/<base-version>` branch and publish to the preview feed and NuGet. Pushes to `main` produce preview packages on the preview feed. Keep preview work on its matching version branch and do not replace the latest stable package with a prerelease build.
 
-## Planned Templates
+## Available Templates
 
 - `elsa-server`: Elsa Server with selectable feature model and EF Core persistence provider.
 - `elsa-studio`: Elsa Studio with selectable Blazor hosting model, authentication provider, and optional Labels module.
@@ -23,7 +21,7 @@ Version-specific branches may target exact stable or preview versions, for examp
 Stable template packages are published to NuGet.org:
 
 ```bash
-dotnet new install Elsa.Templates
+dotnet new install Elsa.Templates@3.8.0
 ```
 
 ## Install From Preview Feed
@@ -104,11 +102,19 @@ dotnet new elsa-combined -n MyElsaApp --feature-model shell --studio-hosting hyb
 
 Hybrid Studio output includes a host project and a WASM client project. The generated host reads `Studio:HostingModel` from configuration so the runtime can start Studio as `Server` or `Wasm`.
 
-The stable `3.7.0` template package exposes only options that restore and build against stable Elsa packages. Preview-only Studio modules and the current MySQL EF provider are intentionally not exposed from `main`.
+The stable `3.8.0` template package exposes only options that restore and build against stable Elsa packages. Preview-only Studio modules and the current MySQL EF provider are intentionally not exposed from `main`.
+
+## Configure Identity
+
+The static feature model uses the configuration-backed identity providers. The generated development settings include a sample `admin` user and application for local use; remove those samples and provide deployment-owned values before production. The static provider reads `Identity:Roles`, `Identity:Users`, and `Identity:Applications` from configuration.
+
+The shell feature model uses CShells identity and persistence features. In development, `CShells:Shells:Default:Features:DefaultAdminUser` bootstraps the configured administrator, including `AdminUserName`, `AdminPassword`, `AdminRoleName`, and `AdminRolePermissions`. Set the signing key at `CShells:Shells:Default:Features:Identity:SigningKey` through deployment configuration and replace the development password before deployment.
+
+Production has no built-in credentials. Choose one identity source for each deployment: use configuration-backed providers for a static setup, or use the durable identity provider with a deployment-owned administrator bootstrap for a shell setup. Do not combine configuration-backed users with a durable provider and assume they are interchangeable.
 
 ## Verification
 
-The smoke tests pack the template package, install it into an isolated template hive, generate every supported option combination, and build the generated outputs.
+The smoke tests pack the template package, install it into an isolated template hive, generate a representative matrix covering the supported options, and build the generated outputs.
 
 ```bash
 dotnet test test/Elsa.Templates.Tests/Elsa.Templates.Tests.csproj

@@ -2,10 +2,13 @@
 using CShells.AspNetCore.Configuration;
 using CShells.AspNetCore.Extensions;
 using CShells.DependencyInjection;
+using Elsa.Dashboard.Api.ShellFeatures;
+using Elsa.Identity.ShellFeatures;
 using Elsa.ShellFeatures;
 using Elsa.Workflows.Api.ShellFeatures;
 using Elsa.Workflows.Management.ShellFeatures;
 using Elsa.Workflows.Runtime.Distributed.ShellFeatures;
+using Elsa.Workflows.Runtime.Dashboard.ShellFeatures;
 using Elsa.Workflows.Runtime.ShellFeatures;
 using Elsa.Workflows.ShellFeatures;
 
@@ -25,7 +28,12 @@ builder.AddShells(shells => shells
             typeof(WorkflowRuntimeFeature),
             typeof(WorkflowsFeature),
             typeof(DistributedRuntimeFeature),
-            typeof(WorkflowsApiFeature));
+            typeof(WorkflowsApiFeature),
+            typeof(DashboardApiFeature),
+            typeof(WorkflowRuntimeDashboardFeature),
+            typeof(IdentityFeature),
+            typeof(DefaultAuthenticationFeature),
+            typeof(DefaultAdminUserFeature));
     }));
 
 builder.Services.AddHealthChecks();
@@ -112,6 +120,8 @@ services.AddElsa(elsa =>
 #endif
         }))
         .UseWorkflowsApi()
+        .UseDashboardApi()
+        .UseWorkflowRuntimeDashboard()
         .UseHttp(http => http.ConfigureHttpOptions = options => configuration.GetSection("Http").Bind(options))
         .UseScheduling()
         .UseJavaScript()
@@ -119,6 +129,7 @@ services.AddElsa(elsa =>
         .UseLiquid();
 });
 
+services.PostConfigure<ApiEndpointOptions>(options => configuration.GetSection("Api").Bind(options));
 services.AddControllers();
 services.AddCors(cors => cors.AddDefaultPolicy(policy => policy
     .AllowAnyHeader()
