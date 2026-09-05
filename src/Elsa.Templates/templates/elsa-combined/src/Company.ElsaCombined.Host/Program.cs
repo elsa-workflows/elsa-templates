@@ -187,7 +187,7 @@ if (useStudioServer)
     services.AddCore().Replace(new(typeof(IBrandingProvider), typeof(StudioBrandingProvider), ServiceLifetime.Scoped));
     services.AddShell(options => configuration.GetSection("Shell").Bind(options));
     services.AddRemoteBackend(backendApiConfig);
-    services.AddDashboardModule();
+    services.AddDashboardModule(backendApiConfig);
     services.AddWorkflowsModule();
 #if (withLabels)
     services.AddLabelsModule(backendApiConfig);

@@ -47,7 +47,7 @@ var localizationConfig = new LocalizationConfig
 services.AddCore();
 services.AddShell();
 services.AddRemoteBackend(backendApiConfig);
-services.AddDashboardModule();
+services.AddDashboardModule(backendApiConfig);
 services.AddWorkflowsModule();
 #if (withLabels)
 services.AddLabelsModule(backendApiConfig);
