@@ -48,13 +48,15 @@ class PackagesWorkflowSourceGuardTests(unittest.TestCase):
             "github.event_name != 'workflow_dispatch' || inputs.recovery_run_id == ''",
             self.workflow,
         )
-        self.assertIn("run-id: ${{ inputs.recovery_run_id }}", self.workflow)
+        self.assertIn("artifact-ids: ${{ steps.recovery_source.outputs.artifact_id }}", self.workflow)
+        self.assertIn("merge-multiple: true", self.workflow)
+        self.assertIn("github-token: ${{ github.token }}", self.workflow)
         self.assertIn("repository: ${{ github.repository }}", self.workflow)
         self.assertIn("name: elsa-template-packages", self.workflow)
 
     def test_recovery_validates_run_and_package_provenance_before_login(self) -> None:
         validation_start = self.workflow.index(
-            "name: Validate original release run and package provenance"
+            "name: Validate original release run and resolve recovery artifact"
         )
         login_start = self.workflow.index("name: NuGet login (OIDC)")
         validation = self.workflow[validation_start:login_start]
@@ -69,6 +71,10 @@ class PackagesWorkflowSourceGuardTests(unittest.TestCase):
             'test "$(jq \'length\' <<<"${build_jobs}")" = "1"',
             ".[0].status // empty",
             ".[0].conclusion // empty",
+            'actions/runs/${RECOVERY_RUN_ID}/artifacts?per_page=100',
+            'select(.name == "elsa-template-packages" and .expired == false',
+            'test "$(jq \'length\' <<<"${recovery_artifacts}")" = "1"',
+            "artifact_digest=\"$(jq -r '.[0].digest // empty'",
             'tag_ref="refs/tags/${RECOVERY_VERSION}"',
             'git rev-parse --verify "${tag_ref}^{commit}"',
             'Elsa.Templates.${RECOVERY_VERSION}.nupkg',
@@ -77,6 +83,29 @@ class PackagesWorkflowSourceGuardTests(unittest.TestCase):
             self.assertIn(required_check, validation)
 
         self.assertLess(validation_start, login_start)
+
+        package_validation = self.workflow.index("name: Validate recovered package provenance")
+        receipt = self.workflow.index("name: Write recovery receipt")
+        evidence_upload = self.workflow.index("name: Upload recovery evidence")
+        publish = self.workflow.index("- name: Publish to nuget.org")
+        self.assertLess(package_validation, publish)
+        self.assertLess(publish, receipt)
+        self.assertLess(receipt, evidence_upload)
+        for required_evidence_field in (
+            '"schema": 1',
+            '"repository":',
+            '"version":',
+            '"original_source_commit":',
+            '"recovery_run_id":',
+            '"recovery_workflow_sha":',
+            '"original_release_run_id":',
+            '"original_artifact":',
+            '"digest":',
+            '"target":',
+            'name: elsa-template-recovery-evidence',
+            'path: recovery-evidence/recovery-receipt.json',
+        ):
+            self.assertIn(required_evidence_field, self.workflow)
 
     def test_recovery_accepts_a_failed_run_when_build_succeeded(self) -> None:
         run = {
