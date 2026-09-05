@@ -188,18 +188,9 @@ jobs:
           name: elsa-template-packages
           path: packages
 
-      - name: Download packages from the original release run
+      - name: Validate original release run and resolve recovery artifact
         if: ${{ github.event_name == 'workflow_dispatch' && inputs.recovery_run_id != '' }}
-        uses: actions/download-artifact@v4
-        with:
-          name: elsa-template-packages
-          path: packages
-          github-token: ${{ github.token }}
-          repository: ${{ github.repository }}
-          run-id: ${{ inputs.recovery_run_id }}
-
-      - name: Validate original release run and package provenance
-        if: ${{ github.event_name == 'workflow_dispatch' && inputs.recovery_run_id != '' }}
+        id: recovery_source
         env:
           GH_TOKEN: ${{ github.token }}
           RECOVERY_RUN_ID: ${{ inputs.recovery_run_id }}
@@ -227,19 +218,55 @@ jobs:
           test "$(jq -r '.[0].status // empty' <<<"${build_jobs}")" = "completed"
           test "$(jq -r '.[0].conclusion // empty' <<<"${build_jobs}")" = "success"
 
+          artifacts_json="$(gh api --paginate --slurp "repos/${GITHUB_REPOSITORY}/actions/runs/${RECOVERY_RUN_ID}/artifacts?per_page=100")"
+          recovery_artifacts="$(jq --argjson expected_run "${RECOVERY_RUN_ID}" '[.[].artifacts[] | select(.name == "elsa-template-packages" and .expired == false and .workflow_run.id == $expected_run)]' <<<"${artifacts_json}")"
+          test "$(jq 'length' <<<"${recovery_artifacts}")" = "1"
+          artifact_id="$(jq -r '.[0].id // empty' <<<"${recovery_artifacts}")"
+          artifact_digest="$(jq -r '.[0].digest // empty' <<<"${recovery_artifacts}")"
+          artifact_size="$(jq -r '.[0].size_in_bytes // empty' <<<"${recovery_artifacts}")"
+          test -n "${artifact_id}"
+          test -n "${artifact_digest}"
+          test -n "${artifact_size}"
+
+          {
+            echo "head_sha=${original_head_sha}"
+            echo "artifact_id=${artifact_id}"
+            echo "artifact_digest=${artifact_digest}"
+            echo "artifact_size=${artifact_size}"
+          } >> "${GITHUB_OUTPUT}"
+
+      - name: Download packages from the original release run
+        if: ${{ github.event_name == 'workflow_dispatch' && inputs.recovery_run_id != '' }}
+        uses: actions/download-artifact@v4
+        with:
+          artifact-ids: ${{ steps.recovery_source.outputs.artifact_id }}
+          path: packages
+          merge-multiple: true
+          github-token: ${{ github.token }}
+          repository: ${{ github.repository }}
+
+      - name: Validate recovered package provenance
+        if: ${{ github.event_name == 'workflow_dispatch' && inputs.recovery_run_id != '' }}
+        env:
+          RECOVERY_RUN_ID: ${{ inputs.recovery_run_id }}
+          RECOVERY_VERSION: ${{ inputs.recovery_version }}
+          ORIGINAL_HEAD_SHA: ${{ steps.recovery_source.outputs.head_sha }}
+        run: |
+          set -euo pipefail
+
           tag_ref="refs/tags/${RECOVERY_VERSION}"
           if ! git rev-parse --verify "${tag_ref}^{commit}" >/dev/null 2>&1; then
             tag_ref="refs/tags/v${RECOVERY_VERSION}"
           fi
           tag_commit="$(git rev-parse --verify "${tag_ref}^{commit}")"
-          test "${tag_commit}" = "${original_head_sha}"
+          test "${tag_commit}" = "${ORIGINAL_HEAD_SHA}"
 
           mapfile -t packages < <(find packages -type f -name '*.nupkg' -print)
           test "${#packages[@]}" -eq 1
           package="${packages[0]}"
           test "$(basename "${package}")" = "Elsa.Templates.${RECOVERY_VERSION}.nupkg"
 
-          python3 - "${package}" "${RECOVERY_VERSION}" "${original_head_sha}" <<'PY'
+          python3 - "${package}" "${RECOVERY_VERSION}" "${ORIGINAL_HEAD_SHA}" <<'PY'
           import sys
           import zipfile
           import xml.etree.ElementTree as ET
@@ -273,3 +300,53 @@ jobs:
           for package in packages/*.nupkg; do
             dotnet nuget push "${package}" --api-key "${{ steps.nuget_login.outputs.NUGET_API_KEY }}" --source "${NUGET_FEED_SOURCE}" --skip-duplicate
           done
+
+      - name: Write recovery receipt
+        if: ${{ github.event_name == 'workflow_dispatch' && inputs.recovery_run_id != '' }}
+        env:
+          RECOVERY_VERSION: ${{ inputs.recovery_version }}
+          ORIGINAL_RELEASE_RUN_ID: ${{ inputs.recovery_run_id }}
+          ORIGINAL_SOURCE_COMMIT: ${{ steps.recovery_source.outputs.head_sha }}
+          ORIGINAL_ARTIFACT_ID: ${{ steps.recovery_source.outputs.artifact_id }}
+          ORIGINAL_ARTIFACT_DIGEST: ${{ steps.recovery_source.outputs.artifact_digest }}
+          ORIGINAL_ARTIFACT_SIZE: ${{ steps.recovery_source.outputs.artifact_size }}
+        run: |
+          set -euo pipefail
+          mkdir -p recovery-evidence
+          python3 - > recovery-evidence/recovery-receipt.json <<'PY'
+          import json
+          import os
+          import sys
+
+          receipt = {
+              "schema": 1,
+              "repository": os.environ["GITHUB_REPOSITORY"],
+              "version": os.environ["RECOVERY_VERSION"],
+              "original_source_commit": os.environ["ORIGINAL_SOURCE_COMMIT"],
+              "recovery_run_id": int(os.environ["GITHUB_RUN_ID"]),
+              "recovery_workflow_sha": os.environ["GITHUB_SHA"],
+              "original_release_run_id": int(os.environ["ORIGINAL_RELEASE_RUN_ID"]),
+              "original_artifact": {
+                  "id": int(os.environ["ORIGINAL_ARTIFACT_ID"]),
+                  "name": "elsa-template-packages",
+                  "run_id": int(os.environ["ORIGINAL_RELEASE_RUN_ID"]),
+                  "digest": os.environ["ORIGINAL_ARTIFACT_DIGEST"],
+                  "size_in_bytes": int(os.environ["ORIGINAL_ARTIFACT_SIZE"]),
+              },
+              "target": {
+                  "registry": "nuget.org",
+                  "package_ids": ["Elsa.Templates"],
+                  "version": os.environ["RECOVERY_VERSION"],
+              },
+          }
+          json.dump(receipt, fp=sys.stdout, indent=2, sort_keys=True)
+          print()
+          PY
+
+      - name: Upload recovery evidence
+        if: ${{ github.event_name == 'workflow_dispatch' && inputs.recovery_run_id != '' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: elsa-template-recovery-evidence
+          path: recovery-evidence/recovery-receipt.json
+          if-no-files-found: error
