@@ -126,7 +126,10 @@ public class TemplateSmokeTests : IClassFixture<TemplatePackageFixture>
         AssertHealthChecksUseDedicatedEndpoint(outputPath);
         AssertPackageVersions(outputPath, TemplatePackageFixture.ElsaVersion, TemplatePackageFixture.CShellsVersion);
         if (templateName is "elsa-studio" or "elsa-combined")
+        {
             AssertStudioAuthenticationComposition(outputPath, !templateOptions.Contains("elsa-login", StringComparer.OrdinalIgnoreCase));
+            AssertHostPageRoutes(outputPath);
+        }
         if (templateName is "elsa-server" or "elsa-combined")
             AssertDeploymentOwnedIdentityConfiguration(outputPath);
         await DotNet.RunAsync("build", Path.Combine(outputPath, $"{solutionName}.slnx"));
@@ -155,6 +158,21 @@ public class TemplateSmokeTests : IClassFixture<TemplatePackageFixture>
             {
                 throw new Xunit.Sdk.XunitException($"Generated configuration is not valid JSON: {appsettingsPath}{Environment.NewLine}{exception.Message}");
             }
+        }
+    }
+
+    private static void AssertHostPageRoutes(string outputPath)
+    {
+        var hostPages = Directory.GetFiles(outputPath, "_*Host.cshtml", SearchOption.AllDirectories);
+        Assert.NotEmpty(hostPages);
+
+        foreach (var hostPage in hostPages)
+        {
+            var pageName = Path.GetFileNameWithoutExtension(hostPage);
+            var pageText = File.ReadAllText(hostPage);
+
+            Assert.Contains($"@page \"/{pageName}\"", pageText, StringComparison.Ordinal);
+            Assert.DoesNotContain("@page \"/\"", pageText, StringComparison.Ordinal);
         }
     }
 
