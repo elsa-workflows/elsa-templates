@@ -54,7 +54,7 @@ builder.Services.AddScoped<IBrandingProvider, StudioBrandingProvider>();
 builder.Services.AddCore().Replace(new(typeof(IBrandingProvider), typeof(StudioBrandingProvider), ServiceLifetime.Scoped));
 builder.Services.AddShell(options => configuration.GetSection("Shell").Bind(options));
 builder.Services.AddRemoteBackend(backendApiConfig);
-builder.Services.AddDashboardModule();
+builder.Services.AddDashboardModule(backendApiConfig);
 builder.Services.AddWorkflowsModule();
 #if (withLabels)
 builder.Services.AddLabelsModule(backendApiConfig);

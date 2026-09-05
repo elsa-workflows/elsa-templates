@@ -145,6 +145,7 @@ public class TemplateSmokeTests : IClassFixture<TemplatePackageFixture>
             Directory.GetFiles(outputPath, "Program.cs", SearchOption.AllDirectories).Select(File.ReadAllText));
 
         Assert.Contains("AddStudioAuthenticationMode", programText, StringComparison.Ordinal);
+        Assert.Contains("AddDashboardModule(backendApiConfig)", programText, StringComparison.Ordinal);
         if (expectsSharedAuthenticationUi)
             Assert.Contains("AddAuthenticationUI", programText, StringComparison.Ordinal);
     }
