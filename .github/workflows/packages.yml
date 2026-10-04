@@ -145,6 +145,15 @@ jobs:
         with:
           name: elsa-template-packages
 
+      - name: Check API key (feedz.io)
+        env:
+          API_KEY: ${{ secrets.FEEDZ_API_KEY }}
+        run: |
+          if [ -z "$API_KEY" ]; then
+            echo "::error::API key for feedz.io is empty. Check the FEEDZ_API_KEY secret (repository or organization); nothing was pushed."
+            exit 1
+          fi
+
       - name: Publish to feedz.io
         run: |
           set -euo pipefail
@@ -295,11 +304,22 @@ jobs:
         with:
           user: ${{ secrets.NUGET_USER }}
 
+      - name: Check API key (nuget.org)
+        env:
+          API_KEY: ${{ steps.nuget_login.outputs.NUGET_API_KEY }}
+        run: |
+          if [ -z "$API_KEY" ]; then
+            echo "::error::API key for nuget.org is empty. Check the NuGet login (OIDC) step output and the Trusted Publishing policy on nuget.org; nothing was pushed."
+            exit 1
+          fi
+
       - name: Publish to nuget.org
+        env:
+          NUGET_API_KEY: ${{ steps.nuget_login.outputs.NUGET_API_KEY }}
         run: |
           set -euo pipefail
           for package in packages/*.nupkg; do
-            dotnet nuget push "${package}" --api-key "${{ steps.nuget_login.outputs.NUGET_API_KEY }}" --source "${NUGET_FEED_SOURCE}" --skip-duplicate
+            dotnet nuget push "${package}" --api-key "${NUGET_API_KEY}" --source "${NUGET_FEED_SOURCE}" --skip-duplicate
           done
 
       - name: Write recovery receipt
