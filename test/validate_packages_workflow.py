@@ -29,6 +29,15 @@ def recovery_run_is_eligible(run: dict, jobs: list[dict]) -> bool:
     )
 
 
+def iter_block(lines: list[str], indent: int = 10):
+    """Yield the lines of a YAML block scalar whose content is indented by ``indent`` spaces."""
+
+    for line in lines:
+        if line.strip() and len(line) - len(line.lstrip(" ")) < indent:
+            return
+        yield line
+
+
 class PackagesWorkflowSourceGuardTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls) -> None:
@@ -125,6 +134,77 @@ class PackagesWorkflowSourceGuardTests(unittest.TestCase):
                 run,
                 jobs + [{"name": "Build packages", "status": "completed", "conclusion": "success"}],
             )
+        )
+
+    def _step(self, name: str) -> str:
+        """Return the source of the workflow step called ``name``, up to the next step or job."""
+
+        start = self.workflow.index(f"      - name: {name}\n")
+        candidates = [
+            index
+            for index in (
+                self.workflow.find("\n      - name: ", start + 1),
+                self.workflow.find("\n  publish_", start + 1),
+            )
+            if index != -1
+        ]
+        end = min(candidates) if candidates else len(self.workflow)
+        return self.workflow[start:end]
+
+    def test_pushes_fail_fast_on_an_empty_api_key(self) -> None:
+        for check_name, push_name, key_expression, push_env in (
+            (
+                "Check API key (feedz.io)",
+                "Publish to feedz.io",
+                "${{ secrets.FEEDZ_API_KEY }}",
+                "FEEDZ_API_KEY",
+            ),
+            (
+                "Check API key (nuget.org)",
+                "Publish to nuget.org",
+                "${{ steps.nuget_login.outputs.NUGET_API_KEY }}",
+                "NUGET_API_KEY",
+            ),
+        ):
+            with self.subTest(push=push_name):
+                check = self._step(check_name)
+                push = self._step(push_name)
+
+                # The check reads exactly the key its push uses, through env.
+                self.assertIn(f"API_KEY: {key_expression}", check)
+                self.assertIn('if [ -z "$API_KEY" ]; then', check)
+                self.assertIn("nothing was pushed.", check)
+                self.assertIn("exit 1", check)
+                self.assertIn(f"{push_env}: {key_expression}", push)
+
+                # It runs immediately before the push, under the same conditions.
+                self.assertLess(
+                    self.workflow.index(f"      - name: {check_name}\n"),
+                    self.workflow.index(f"      - name: {push_name}\n"),
+                )
+                between = self.workflow[
+                    self.workflow.index(f"      - name: {check_name}\n") + len(check) :
+                    self.workflow.index(f"      - name: {push_name}\n")
+                ]
+                self.assertEqual(between.strip(), "")
+                self.assertNotIn("if:", check)
+                self.assertNotIn("if:", push)
+
+                # The push passes the key through env, never inline.
+                run_lines = push[push.index("        run: |\n") :].splitlines()[1:]
+                run_script = "\n".join(
+                    line for line in iter_block(run_lines)
+                )
+                self.assertNotIn("${{", run_script)
+                self.assertIn(f'--api-key "${{{push_env}}}"', run_script)
+
+        self.assertIn(
+            "Check the FEEDZ_API_KEY secret (repository or organization)",
+            self._step("Check API key (feedz.io)"),
+        )
+        self.assertIn(
+            "Check the NuGet login (OIDC) step output and the Trusted Publishing policy on nuget.org",
+            self._step("Check API key (nuget.org)"),
         )
 
     def test_normal_release_still_publishes_from_successful_build(self) -> None:
