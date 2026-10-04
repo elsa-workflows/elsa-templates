@@ -253,7 +253,7 @@ public class TemplateSmokeTests : IClassFixture<TemplatePackageFixture>
 
 public sealed class TemplatePackageFixture : IAsyncLifetime
 {
-    public const string ElsaVersion = "3.8.0";
+    public const string ElsaVersion = "3.9.0";
     public const string CShellsVersion = "0.0.28";
 
     public string PackagePath { get; private set; } = null!;
