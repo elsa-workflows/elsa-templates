@@ -4,7 +4,7 @@
 
 ## Version Policy
 
-The `main` branch targets the latest stable Elsa release. The current stable release is Elsa `3.8.0`.
+The `main` branch targets the latest stable Elsa release. The current stable release is Elsa `3.9.0`.
 
 Preview and release-candidate work uses a matching `release/<base-version>` branch, for example `release/3.9.0`, and produces versions such as `3.9.0-preview.1234`.
 
@@ -21,7 +21,7 @@ The package workflow publishes stable packages only for a published release whos
 Stable template packages are published to NuGet.org:
 
 ```bash
-dotnet new install Elsa.Templates@3.8.0
+dotnet new install Elsa.Templates@3.9.0
 ```
 
 ## Install From Preview Feed
@@ -32,7 +32,7 @@ Preview template packages are published to the Elsa preview feed. Install a prev
 dotnet new install Elsa.Templates@<preview-version> --add-source https://f.feedz.io/elsa-workflows/elsa-3/nuget/index.json
 ```
 
-For example: `Elsa.Templates@3.8.0-preview.1234`.
+For example: `Elsa.Templates@3.9.0-preview.1234`.
 
 To make the preview feed available for package restore as well, add it to your `NuGet.config` next to the main NuGet feed:
 
@@ -102,7 +102,7 @@ dotnet new elsa-combined -n MyElsaApp --feature-model shell --studio-hosting hyb
 
 Hybrid Studio output includes a host project and a WASM client project. The generated host reads `Studio:HostingModel` from configuration so the runtime can start Studio as `Server` or `Wasm`.
 
-The stable `3.8.0` template package exposes only options that restore and build against stable Elsa packages. Preview-only Studio modules and the current MySQL EF provider are intentionally not exposed from `main`.
+The stable `3.9.0` template package exposes only options that restore and build against stable Elsa packages. Preview-only Studio modules and the current MySQL EF provider are intentionally not exposed from `main`.
 
 ## Configure Identity
 
